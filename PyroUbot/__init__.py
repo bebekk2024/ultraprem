@@ -1,3 +1,14 @@
+# Compatibility shim must be imported extremely early so third-party packages
+# (like pykeyboard) that import names from top-level `pyrogram` succeed.
+try:
+    # package-relative import
+    from .core.helpers import pyrogram_compat  # noqa: F401
+except Exception:
+    # If this fails, we continue so that the original import errors surface
+    # (but normally this import should succeed as soon as the file exists).
+    pass
+
+# --- existing content of __init__.py follows ---
 import uvloop
 
 uvloop.install()
