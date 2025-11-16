@@ -1,15 +1,16 @@
-# Compatibility shim must be imported before pykeyboard tries to import from pyrogram
+# Ensure compatibility shim runs before pykeyboard tries to import pyrogram internals
 try:
     from . import pyrogram_compat  # noqa: F401
 except Exception:
     try:
         from PyroUbot.core.helpers import pyrogram_compat  # noqa: F401
     except Exception:
+        # If shim cannot be imported for any reason, continue — import error will show later
         pass
 
 import re
 from pykeyboard import InlineKeyboard
-from pyrogram.types import InlineKeyboardButton
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.errors import MessageNotModified
 from pyrogram.types import *
 from pyromod.helpers import ikb
