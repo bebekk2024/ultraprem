@@ -1,0 +1,58 @@
+{
+      "env": {
+        "MONGO_URL": {
+            "description": "Fill there an mongo database from mongodb.com",
+            "required": true,
+            "value": ""
+        },
+        "OPENAI_API": {
+            "description": "Jika ingin menggunakan openai, isi openai-api-key",
+            "required": false,
+            "value": ""
+        },
+        "OWNER_ID": {
+            "description": "Fill there your I'd go to @geezramrobot pm and type /id",
+            "required": true,
+            "value": "5779185981"
+        },
+        "LOGS_MAKER_UBOT": {
+            "description": "Log group",
+            "required": true,
+            "value": "-1002032983910"
+        },
+        "MAX_BOT": {
+            "description": "maksimal",
+            "required": true,
+            "value": "100"
+        },
+        "BOT_TOKEN": {
+            "description": "fill with your bot token get from @BotFather on telegram",
+            "required": true,
+            "value": ""
+        },
+        "HEROKU_API_KEY": {
+            "description": "Heroku Api Key",
+            "required": true,
+            "value": "."
+        },
+        "HEROKU_APP_NAME": {
+            "description": "Heroku APP name",
+            "required": true,
+            "value": "."
+        }
+    },
+    "buildpacks": [
+        {
+          "url": "heroku/python"
+        },
+        {
+          "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
+        }
+    ],
+    "formation": {
+        "worker": {
+          "quantity": 1,
+          "size": "basic"
+        }
+      }
+  }
