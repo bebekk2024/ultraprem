@@ -1,1 +1,1 @@
-worker: python3 -m PyroUbot
+web: python main.py
