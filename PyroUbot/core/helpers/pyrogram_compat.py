@@ -1,40 +1,44 @@
-# https://github.com/ffloowers09/PyroUbot (local path in your repo)
-# Compatibility shim: ensure pyrogram exposes InlineKeyboard types at top-level
-# so packages that expect `from pyrogram import InlineKeyboardMarkup` still work.
-# Import this module before any other module that imports pyrogram/pykeyboard.
+"""
+Compatibility shim for pyrogram types.
+
+Some third-party packages (e.g. pykeyboard) do `from pyrogram import InlineKeyboardMarkup`
+or `from pyrogram import ReplyKeyboardMarkup`. Newer pyrogram versions expose these
+classes under `pyrogram.types` only. Import this module before any import that may
+trigger pykeyboard/pyrogram imports so the top-level names exist.
+
+Place this file in: PyroUbot/core/helpers/pyrogram_compat.py
+and ensure other helper modules import it first (see inline.py sample).
+"""
+import warnings
 
 try:
     import pyrogram
-    # pyrogram versions expose types at pyrogram.types
     try:
         from pyrogram import types as _types
     except Exception:
         _types = None
 
     if _types is not None:
-        # InlineKeyboardMarkup
-        if not hasattr(pyrogram, "InlineKeyboardMarkup") and hasattr(
-            _types, "InlineKeyboardMarkup"
-        ):
-            pyrogram.InlineKeyboardMarkup = _types.InlineKeyboardMarkup
+        # Mapping table: top-level name -> attribute name in pyrogram.types
+        _mappings = {
+            "InlineKeyboardMarkup": "InlineKeyboardMarkup",
+            "InlineKeyboardButton": "InlineKeyboardButton",
+            "InlineKeyboard": "InlineKeyboardMarkup",  # some libs expect InlineKeyboard alias
+            "ReplyKeyboardMarkup": "ReplyKeyboardMarkup",
+            "ReplyKeyboardButton": "ReplyKeyboardButton",
+            "KeyboardButton": "KeyboardButton",
+            "KeyboardButtonRow": "KeyboardButtonRow",
+        }
 
-        # InlineKeyboardButton
-        if not hasattr(pyrogram, "InlineKeyboardButton") and hasattr(
-            _types, "InlineKeyboardButton"
-        ):
-            pyrogram.InlineKeyboardButton = _types.InlineKeyboardButton
-
-        # Common aliases some libs expect
-        if not hasattr(pyrogram, "InlineKeyboard") and hasattr(
-            _types, "InlineKeyboardMarkup"
-        ):
-            # Some external libs refer to InlineKeyboard as an alias for InlineKeyboardMarkup
+        for top_name, type_name in _mappings.items():
             try:
-                pyrogram.InlineKeyboard = _types.InlineKeyboardMarkup
-            except Exception:
-                pass
-
+                if not hasattr(pyrogram, top_name) and hasattr(_types, type_name):
+                    setattr(pyrogram, top_name, getattr(_types, type_name))
+            except Exception as _exc:
+                # Keep going if a single mapping fails
+                warnings.warn(
+                    f"pyrogram_compat: failed to map {top_name} -> {type_name}: {_exc}"
+                )
 except Exception:
-    # Don't raise here to avoid masking the real startup error.
-    # If this shim fails, the original import error will surface elsewhere.
+    # If anything goes wrong, don't block startup here; let the real import error surface.
     pass
