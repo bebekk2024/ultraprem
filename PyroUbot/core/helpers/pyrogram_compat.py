@@ -1,44 +1,67 @@
 """
 Compatibility shim for pyrogram types.
 
-Some third-party packages (e.g. pykeyboard) do `from pyrogram import InlineKeyboardMarkup`
-or `from pyrogram import ReplyKeyboardMarkup`. Newer pyrogram versions expose these
-classes under `pyrogram.types` only. Import this module before any import that may
-trigger pykeyboard/pyrogram imports so the top-level names exist.
+Place this file at: PyroUbot/core/helpers/pyrogram_compat.py
 
-Place this file in: PyroUbot/core/helpers/pyrogram_compat.py
-and ensure other helper modules import it first (see inline.py sample).
+This module will try to map common keyboard-related classes from pyrogram.types
+onto the top-level pyrogram module, so third-party libs that do
+`from pyrogram import InlineKeyboardMarkup` or `from pyrogram import ReplyKeyboardMarkup`
+will not fail.
 """
-import warnings
+from __future__ import annotations
 
-try:
-    import pyrogram
+import importlib
+import sys
+import warnings
+from typing import Dict
+
+def _apply_mappings():
     try:
-        from pyrogram import types as _types
+        pyrogram = importlib.import_module("pyrogram")
+    except Exception:
+        # pyrogram not installed; nothing to do
+        return
+
+    # Try to import pyrogram.types (newer pyrograms expose types here)
+    _types = None
+    try:
+        _types = importlib.import_module("pyrogram.types")
     except Exception:
         _types = None
 
-    if _types is not None:
-        # Mapping table: top-level name -> attribute name in pyrogram.types
-        _mappings = {
-            "InlineKeyboardMarkup": "InlineKeyboardMarkup",
-            "InlineKeyboardButton": "InlineKeyboardButton",
-            "InlineKeyboard": "InlineKeyboardMarkup",  # some libs expect InlineKeyboard alias
-            "ReplyKeyboardMarkup": "ReplyKeyboardMarkup",
-            "ReplyKeyboardButton": "ReplyKeyboardButton",
-            "KeyboardButton": "KeyboardButton",
-            "KeyboardButtonRow": "KeyboardButtonRow",
-        }
+    # Mapping: top-level name (what external libs import) -> attribute name in pyrogram.types
+    mappings: Dict[str, str] = {
+        # Inline keyboards
+        "InlineKeyboardMarkup": "InlineKeyboardMarkup",
+        "InlineKeyboardButton": "InlineKeyboardButton",
+        "InlineKeyboard": "InlineKeyboardMarkup",  # some libs expect this alias
 
-        for top_name, type_name in _mappings.items():
+        # Reply keyboards
+        "ReplyKeyboardMarkup": "ReplyKeyboardMarkup",
+        "ReplyKeyboardButton": "ReplyKeyboardButton",
+        "KeyboardButton": "KeyboardButton",
+        "KeyboardButtonRow": "KeyboardButtonRow",
+
+        # Other common names (add as needed)
+        "ForceReply": "ForceReply",
+        "ReplyKeyboardRemove": "ReplyKeyboardRemove",
+    }
+
+    if _types is not None:
+        for top_name, type_name in mappings.items():
             try:
-                if not hasattr(pyrogram, top_name) and hasattr(_types, type_name):
-                    setattr(pyrogram, top_name, getattr(_types, type_name))
-            except Exception as _exc:
-                # Keep going if a single mapping fails
-                warnings.warn(
-                    f"pyrogram_compat: failed to map {top_name} -> {type_name}: {_exc}"
-                )
-except Exception:
-    # If anything goes wrong, don't block startup here; let the real import error surface.
-    pass
+                if not hasattr(pyrogram, top_name):
+                    attr = getattr(_types, type_name, None)
+                    if attr is not None:
+                        setattr(pyrogram, top_name, attr)
+            except Exception as exc:
+                warnings.warn(f"pyrogram_compat: failed to map {top_name}: {exc}")
+
+    # Some packages import specific classes directly from submodules, e.g.:
+    #   from pyrogram.types import InlineKeyboardButton
+    # That will work normally if pyrogram.types exists; we don't overwrite that.
+    # But some packages do `from pyrogram import InlineKeyboardMarkup` which expects
+    # the attribute on top-level pyrogram module — mapping above handles that.
+
+# Run mapping at import time
+_apply_mappings()
